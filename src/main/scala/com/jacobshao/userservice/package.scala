@@ -14,6 +14,8 @@ import scala.util.control.NoStackTrace
 
 package object userservice {
 
+  val ReqResBaseUrl = "https://reqres.in/api/users/"
+
   case class EmailAddress(value: String) extends AnyVal
 
   implicit val emailAddressDecoder: Decoder[EmailAddress] = deriveUnwrappedDecoder
@@ -44,10 +46,11 @@ package object userservice {
   case class UserData(first_name: FirstName, last_name: LastName)
 
   case class ReqResUserResponse(data: UserData)
-
   implicit val reqResUserJsonDecoder: EntityDecoder[Task, ReqResUserResponse] = jsonOf[Task, ReqResUserResponse]
 
   case class ResponseError(message: String)
+
+  implicit val responseErrorJsonDecoder: EntityDecoder[Task, ResponseError] = jsonOf[Task, ResponseError]
 
   /**
    * Exceptions

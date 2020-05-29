@@ -42,7 +42,7 @@ object UserServiceServer extends TaskApp with StrictLogging {
       userRepo = UserRepo(tractor)
       userAlg = UserService.impl(userRepo, client)
       authRoute = Logger
-        .httpRoutes(logHeaders = true, logBody = true)(UserServiceRoutes(userAlg))
+        .httpRoutes(logHeaders = true, logBody = true)(UserServiceRoute(userAlg))
       httpApp = Metrics(ServerMetrics)(authRoute).orNotFound
       exitCode <- BlazeServerBuilder[Task]
         .withBanner(Seq("http4s Server starts ****************************"))

@@ -9,6 +9,7 @@ val CirceConfigVersion = "0.8.0"
 val fuuidVersion = "0.3.0"
 val Metrics4Scala = "4.1.5"
 val Scopt = "4.0.0-RC2"
+val Mockito = "1.14.3"
 
 lazy val root = (project in file("."))
   .settings(
@@ -35,7 +36,8 @@ lazy val root = (project in file("."))
       "io.chrisdavenport" %% "fuuid-circe" % fuuidVersion,
       "ch.qos.logback" % "logback-classic" % LogbackVersion,
       "nl.grons" %% "metrics4-scala" % Metrics4Scala,
-      "org.scalatest" %% "scalatest" % ScalaTestVersion % Test
+      "org.scalatest" %% "scalatest" % ScalaTestVersion % Test,
+      "org.mockito" %% "mockito-scala" % Mockito % Test
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0")

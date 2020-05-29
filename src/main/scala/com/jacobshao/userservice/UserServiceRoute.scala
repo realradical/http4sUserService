@@ -12,7 +12,7 @@ import org.http4s.circe.CirceEntityEncoder._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{HttpRoutes, MessageBodyFailure}
 
-object UserServiceRoutes extends StrictLogging {
+object UserServiceRoute extends StrictLogging {
 
   private val dsl = new Http4sDsl[Task] {}
 
@@ -24,7 +24,7 @@ object UserServiceRoutes extends StrictLogging {
         req
           .as[UserCreationRequest]
           .flatMap(request => userService.create(request))
-          .flatMap(Ok(_))
+          .flatMap(_ => NoContent())
           .onErrorHandleWith {
             case e: MessageBodyFailure => BadRequest(ResponseError(e.message).asJson)
             case e: UserCreationRequestInvalidFailure => BadRequest(ResponseError(e.message).asJson)
