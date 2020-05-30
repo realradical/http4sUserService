@@ -12,6 +12,8 @@ trait UserRepo {
   def createUser(user: User): Task[Either[UserAlreadyExistsFailure.type, Int]]
 
   def getUser(email: EmailAddress): Task[Either[UserNotExistsFailure.type, User]]
+
+  def deleteUser(email: EmailAddress): Task[Int]
 }
 
 object UserRepo {
@@ -26,5 +28,8 @@ object UserRepo {
       UserQuery.select(email).unique.transact(xa).map(Right(_)).onErrorHandle {
         case invariant.UnexpectedEnd => Left(UserNotExistsFailure)
       }
+
+    override def deleteUser(email: EmailAddress): Task[Int] =
+      UserQuery.delete(email).run.transact(xa)
   }
 }

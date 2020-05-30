@@ -35,4 +35,13 @@ object UserQuery {
         """.stripMargin
       .query[User]
   }
+
+  def delete(email: EmailAddress): doobie.Update0 = {
+    sql"""
+         |DELETE
+         |FROM users
+         |WHERE email = $email
+        """.stripMargin
+      .update
+  }
 }

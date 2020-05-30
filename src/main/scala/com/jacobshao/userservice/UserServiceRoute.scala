@@ -47,5 +47,17 @@ object UserServiceRoute extends StrictLogging {
             case e: SQLException => Task(logger.warn(s"SQL exception encountered. Details: ${e.getMessage}")) *> InternalServerError()
             case e => Task(logger.warn(s"Exception encountered. Details: ${e.getMessage}")) *> ServiceUnavailable()
           }
+
+      case DELETE -> Root / "users" / email =>
+        (for {
+          emailAddress <- Task.now(EmailAddress(email))
+          _ <- userService.delete(emailAddress)
+          response <- NoContent()
+        } yield response)
+          .onErrorHandleWith {
+            case e: InvalidEmailFormatFailure.type => BadRequest(ResponseError(e.message).asJson)
+            case e: SQLException => Task(logger.warn(s"SQL exception encountered. Details: ${e.getMessage}")) *> InternalServerError()
+            case e => Task(logger.warn(s"Exception encountered. Details: ${e.getMessage}")) *> ServiceUnavailable()
+          }
     }
 }

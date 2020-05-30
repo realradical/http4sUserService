@@ -11,6 +11,8 @@ trait UserService {
   def create(userCreationRequest: UserCreationRequest): Task[Unit]
 
   def get(email: EmailAddress): Task[User]
+
+  def delete(email: EmailAddress): Task[Unit]
 }
 
 object UserService {
@@ -52,5 +54,14 @@ object UserService {
         }
       } yield user
 
+    override def delete(email: EmailAddress): Task[Unit] =
+      for {
+        validEmail <- CreateRequestValidatorNec
+          .validateEmail(email) match {
+          case Valid(email) => Task.now(email)
+          case Invalid(_) => Task.raiseError(InvalidEmailFormatFailure)
+        }
+        _ <- userRepo.deleteUser(validEmail)
+      } yield ()
   }
 }
