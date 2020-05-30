@@ -23,7 +23,7 @@ class UserServiceRouteSpec extends AnyFlatSpec
 
   private val mockClient = mock[Client[Task]]
 
-  "POST /users" should "return 204 NoContent when user creation is successful" in {
+  "POST /users" should "return 204 No Content when user creation is successful" in {
     when(mockClient.expectOption[ReqResUserResponse](*[Request[Task]])(*[EntityDecoder[Task, ReqResUserResponse]]))
       .thenReturn(Task.now(Some(someValidReqResUserResponse)))
 
@@ -217,6 +217,67 @@ class UserServiceRouteSpec extends AnyFlatSpec
       .run(
         Request[Task](
           method = Method.GET,
+          uri = uri"/users" / s"${someValidUserEmail.value}"
+        )
+      )
+
+    check[ResponseError](response, Status.ServiceUnavailable, checkBody = false) shouldBe true
+  }
+
+  "DELETE /users/{email}" should "return 204 No Content when user is deleted" in {
+
+    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val response: Task[Response[Task]] = UserServiceRoute(userAlg)
+      .orNotFound
+      .run(
+        Request[Task](
+          method = Method.DELETE,
+          uri = uri"/users" / s"${someValidUserEmail.value}"
+        )
+      )
+
+    check[User](response, Status.NoContent) shouldBe true
+  }
+
+  it should "return 400 Bad Request when receiving an invalid email" in {
+
+    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val response: Task[Response[Task]] = UserServiceRoute(userAlg)
+      .orNotFound
+      .run(
+        Request[Task](
+          method = Method.DELETE,
+          uri = uri"/users" / s"${someInValidUserEmail.value}"
+        )
+      )
+
+    val expectedResponseError = generateExpectedResponseError(InvalidEmailFormatFailure.message)
+    check[ResponseError](response, Status.BadRequest, checkBody = true, Some(expectedResponseError)) shouldBe true
+  }
+
+  it should "return 500 Internal Server Error when encounter database exception during user deletion" in {
+
+    val userAlg = UserService.impl(someUserSQLFailRepo, mockClient)
+    val response: Task[Response[Task]] = UserServiceRoute(userAlg)
+      .orNotFound
+      .run(
+        Request[Task](
+          method = Method.DELETE,
+          uri = uri"/users" / s"${someValidUserEmail.value}"
+        )
+      )
+
+    check[ResponseError](response, Status.InternalServerError, checkBody = false) shouldBe true
+  }
+
+  it should "return 503 Service Unavailable when encounter exception during user deletion" in {
+
+    val userAlg = UserService.impl(someUserExceptionFailRepo, mockClient)
+    val response: Task[Response[Task]] = UserServiceRoute(userAlg)
+      .orNotFound
+      .run(
+        Request[Task](
+          method = Method.DELETE,
           uri = uri"/users" / s"${someValidUserEmail.value}"
         )
       )
