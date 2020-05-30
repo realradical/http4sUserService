@@ -6,23 +6,32 @@ import io.circe.generic.auto._
 import io.circe.generic.extras.semiauto._
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
-import org.http4s.EntityDecoder
 import org.http4s.circe._
+import org.http4s.implicits._
+import org.http4s.{EntityDecoder, Uri}
 
 import scala.util.control.NoStackTrace
 
 
 package object userservice {
 
-  val ReqResBaseUrl = "https://reqres.in/api/users/"
+  /**
+   * Fixed values
+   */
+  val reqResBaseUrl: Uri = uri"https://reqres.in" / "api" / "users"
 
+  /**
+   * ADTs
+   */
   case class EmailAddress(value: String) extends AnyVal
 
   implicit val emailAddressDecoder: Decoder[EmailAddress] = deriveUnwrappedDecoder
+  implicit val emailAddressEncoder: Encoder[EmailAddress] = deriveUnwrappedEncoder
 
   case class UserId(value: Int) extends AnyVal
 
   implicit val userIdDecoder: Decoder[UserId] = deriveUnwrappedDecoder
+  implicit val userIdEncoder: Encoder[UserId] = deriveUnwrappedEncoder
 
   case class FirstName(value: String) extends AnyVal
 
@@ -30,7 +39,6 @@ package object userservice {
   implicit val firstNameEncoder: Encoder[FirstName] = deriveUnwrappedEncoder
 
   case class LastName(value: String) extends AnyVal
-
   implicit val lastNameDecoder: Decoder[LastName] = deriveUnwrappedDecoder
   implicit val lastNameEncoder: Encoder[LastName] = deriveUnwrappedEncoder
 
@@ -43,13 +51,14 @@ package object userservice {
       lastName: LastName
   )
 
+  implicit val userJsonDecoder: EntityDecoder[Task, User] = jsonOf[Task, User]
+
   case class UserData(first_name: FirstName, last_name: LastName)
 
   case class ReqResUserResponse(data: UserData)
   implicit val reqResUserJsonDecoder: EntityDecoder[Task, ReqResUserResponse] = jsonOf[Task, ReqResUserResponse]
 
   case class ResponseError(message: String)
-
   implicit val responseErrorJsonDecoder: EntityDecoder[Task, ResponseError] = jsonOf[Task, ResponseError]
 
   /**
@@ -62,8 +71,20 @@ package object userservice {
     def message: String
   }
 
+  case object UserDataNotAvailableFailure extends UserServiceError {
+    override def message: String = "User data with this user_id is not available."
+  }
+
   case object UserAlreadyExistsFailure extends UserServiceError {
     override def message: String = "User with this email already exists."
+  }
+
+  case object UserNotExistsFailure extends UserServiceError {
+    override def message: String = "User with this email does not exists."
+  }
+
+  case object InvalidEmailFormatFailure extends UserServiceError {
+    override def message: String = "Invalid email format."
   }
 
   case class UserCreationRequestInvalidFailure(errorMessage: String) extends UserServiceError {
@@ -88,12 +109,12 @@ package object userservice {
 
     type ValidationResult[A] = ValidatedNec[DomainValidation, A]
 
-    private def validateEmail(email: EmailAddress): ValidationResult[EmailAddress] =
+    def validateEmail(email: EmailAddress): ValidationResult[EmailAddress] =
       if (email.value.matches(emailRegex))
         email.validNec
       else EmailInvalid.invalidNec
 
-    def validateRequest(email: EmailAddress): ValidationResult[EmailAddress] = validateEmail(email)
+    def validateRequest(req: UserCreationRequest): ValidationResult[EmailAddress] = validateEmail(req.email)
   }
 
   object CreateRequestValidatorNec extends CreateRequestValidatorNec

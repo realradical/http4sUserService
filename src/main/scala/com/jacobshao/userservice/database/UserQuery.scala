@@ -23,7 +23,7 @@ object UserQuery {
       .update
   }
 
-  def selectByEmail(email: EmailAddress): doobie.Query0[User] = {
+  def select(email: EmailAddress): doobie.Query0[User] = {
     sql"""
          |SELECT
          |  user_id,

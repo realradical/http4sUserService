@@ -21,14 +21,29 @@ object UserServiceRoute extends StrictLogging {
   def apply(userService: UserService): HttpRoutes[Task] =
     HttpRoutes.of[Task] {
       case req@POST -> Root / "users" =>
-        req
-          .as[UserCreationRequest]
-          .flatMap(request => userService.create(request))
-          .flatMap(_ => NoContent())
+        (for {
+          decodedReq <- req.as[UserCreationRequest]
+          _ <- userService.create(decodedReq)
+          response <- NoContent()
+        } yield response)
           .onErrorHandleWith {
             case e: MessageBodyFailure => BadRequest(ResponseError(e.message).asJson)
             case e: UserCreationRequestInvalidFailure => BadRequest(ResponseError(e.message).asJson)
+            case e: UserDataNotAvailableFailure.type => NotFound(ResponseError(e.message).asJson)
             case e: UserAlreadyExistsFailure.type => Conflict(ResponseError(e.message).asJson)
+            case e: SQLException => Task(logger.warn(s"SQL exception encountered. Details: ${e.getMessage}")) *> InternalServerError()
+            case e => Task(logger.warn(s"Exception encountered. Details: ${e.getMessage}")) *> ServiceUnavailable()
+          }
+
+      case GET -> Root / "users" / email =>
+        (for {
+          emailAddress <- Task.now(EmailAddress(email))
+          user <- userService.get(emailAddress)
+          response <- Ok(user)
+        } yield response)
+          .onErrorHandleWith {
+            case e: InvalidEmailFormatFailure.type => BadRequest(ResponseError(e.message).asJson)
+            case e: UserNotExistsFailure.type => NotFound(ResponseError(e.message).asJson)
             case e: SQLException => Task(logger.warn(s"SQL exception encountered. Details: ${e.getMessage}")) *> InternalServerError()
             case e => Task(logger.warn(s"Exception encountered. Details: ${e.getMessage}")) *> ServiceUnavailable()
           }
