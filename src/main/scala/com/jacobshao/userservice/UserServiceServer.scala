@@ -37,12 +37,12 @@ object UserServiceServer extends TaskApp with StrictLogging {
   private def serverStream(cliArgs: CliArgs): Stream[Task, ExitCode] =
     for {
       Config(serverConfig, dbConfig) <- Stream.eval(Config.load())
-      tractor <- Stream.resource(Database.transactor(cliArgs, dbConfig))
-      client <- Stream.resource(BlazeClientBuilder(scheduler).resource)
-      userRepo = UserRepo(tractor)
-      userAlg = UserService.impl(userRepo, client)
-      authRoute = Logger
-        .httpRoutes(logHeaders = true, logBody = true)(UserServiceRoute(userAlg))
+      (tractor, client) <- (
+        Stream.resource(Database.transactor(cliArgs, dbConfig)),
+        Stream.resource(BlazeClientBuilder(scheduler).resource)
+        ).mapN((_, _))
+      userAlg = UserService.impl(UserRepo(tractor), client)
+      authRoute = Logger.httpRoutes(logHeaders = true, logBody = true)(UserServiceRoute(userAlg))
       httpApp = Metrics(ServerMetrics)(authRoute).orNotFound
       exitCode <- BlazeServerBuilder[Task]
         .withBanner(Seq("http4s Server starts ****************************"))

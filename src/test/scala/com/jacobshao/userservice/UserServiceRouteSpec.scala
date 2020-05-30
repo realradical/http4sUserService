@@ -1,5 +1,8 @@
 package com.jacobshao.userservice
 
+import java.sql.SQLException
+
+import com.jacobshao.userservice.repo.UserRepo
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.http4s._
@@ -22,12 +25,15 @@ class UserServiceRouteSpec extends AnyFlatSpec
   with TestFixture {
 
   private val mockClient = mock[Client[Task]]
+  private val mockRepo = mock[UserRepo]
 
   "POST /users" should "return 204 No Content when user creation is successful" in {
     when(mockClient.expectOption[ReqResUserResponse](*[Request[Task]])(*[EntityDecoder[Task, ReqResUserResponse]]))
       .thenReturn(Task.now(Some(someValidReqResUserResponse)))
 
-    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    when(mockRepo.createUser(someUser)).thenReturn(Task.now(Right(1)))
+
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -43,7 +49,7 @@ class UserServiceRouteSpec extends AnyFlatSpec
 
   it should "return 400 Bad Request when create user with malformed request body" in {
 
-    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -59,7 +65,7 @@ class UserServiceRouteSpec extends AnyFlatSpec
 
   it should "return 400 Bad Request when create user with invalid email" in {
 
-    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -78,7 +84,7 @@ class UserServiceRouteSpec extends AnyFlatSpec
     when(mockClient.expectOption[ReqResUserResponse](*[Request[Task]])(*[EntityDecoder[Task, ReqResUserResponse]]))
       .thenReturn(Task.now(None))
 
-    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -97,7 +103,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
     when(mockClient.expectOption[ReqResUserResponse](*[Request[Task]])(*[EntityDecoder[Task, ReqResUserResponse]]))
       .thenReturn(Task.now(Some(someValidReqResUserResponse)))
 
-    val userAlg = UserService.impl(someUserConflictFailRepo, mockClient)
+    when(mockRepo.createUser(someUser)).thenReturn(Task.now(Left(UserAlreadyExistsFailure)))
+
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -116,7 +124,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
     when(mockClient.expectOption[ReqResUserResponse](*[Request[Task]])(*[EntityDecoder[Task, ReqResUserResponse]]))
       .thenReturn(Task.now(Some(someValidReqResUserResponse)))
 
-    val userAlg = UserService.impl(someUserSQLFailRepo, mockClient)
+    when(mockRepo.createUser(someUser)).thenReturn(Task.raiseError(new SQLException))
+
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -133,7 +143,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
   it should "return 503 Service Unavailable when encounter exception during user creation" in {
     when(mockClient.expect[ReqResUserResponse](s"$reqResBaseUrl${someValidUserId.value}")).thenReturn(Task.now(someValidReqResUserResponse))
 
-    val userAlg = UserService.impl(someUserExceptionFailRepo, mockClient)
+    when(mockRepo.createUser(someUser)).thenReturn(Task.raiseError(new Exception))
+
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -148,8 +160,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
   }
 
   "GET /users/{email}" should "return 200 OK when user data is successfully retrieved" in {
+    when(mockRepo.getUser(someValidUserEmail)).thenReturn(Task.now(Right(someUser)))
 
-    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -164,7 +177,7 @@ class UserServiceRouteSpec extends AnyFlatSpec
 
   it should "return 400 Bad Request when receiving an invalid email" in {
 
-    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -179,8 +192,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
   }
 
   it should "return 404 Not Found when user does not exist" in {
+    when(mockRepo.getUser(someValidUserEmail)).thenReturn(Task.raiseError(UserNotExistsFailure))
 
-    val userAlg = UserService.impl(someUserConflictFailRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -195,8 +209,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
   }
 
   it should "return 500 Internal Server Error when encounter database exception during user data retrieval" in {
+    when(mockRepo.getUser(someValidUserEmail)).thenReturn(Task.raiseError(new SQLException))
 
-    val userAlg = UserService.impl(someUserSQLFailRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -210,8 +225,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
   }
 
   it should "return 503 Service Unavailable when encounter exception during user data retrieval" in {
+    when(mockRepo.getUser(someValidUserEmail)).thenReturn(Task.raiseError(new Exception))
 
-    val userAlg = UserService.impl(someUserExceptionFailRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -225,8 +241,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
   }
 
   "DELETE /users/{email}" should "return 204 No Content when user is deleted" in {
+    when(mockRepo.deleteUser(someValidUserEmail)).thenReturn(Task.now(1))
 
-    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -241,7 +258,7 @@ class UserServiceRouteSpec extends AnyFlatSpec
 
   it should "return 400 Bad Request when receiving an invalid email" in {
 
-    val userAlg = UserService.impl(someUserSuccessRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -256,8 +273,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
   }
 
   it should "return 500 Internal Server Error when encounter database exception during user deletion" in {
+    when(mockRepo.deleteUser(someValidUserEmail)).thenReturn(Task.raiseError(new SQLException))
 
-    val userAlg = UserService.impl(someUserSQLFailRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
@@ -271,8 +289,9 @@ class UserServiceRouteSpec extends AnyFlatSpec
   }
 
   it should "return 503 Service Unavailable when encounter exception during user deletion" in {
+    when(mockRepo.deleteUser(someValidUserEmail)).thenReturn(Task.raiseError(new Exception))
 
-    val userAlg = UserService.impl(someUserExceptionFailRepo, mockClient)
+    val userAlg = UserService.impl(mockRepo, mockClient)
     val response: Task[Response[Task]] = UserServiceRoute(userAlg)
       .orNotFound
       .run(
