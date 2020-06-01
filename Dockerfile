@@ -11,9 +11,16 @@ RUN apt-get update && \
     wget -qO - --no-check-certificate https://github.com/sbt/sbt/releases/download/v$sbt_version/sbt-$sbt_version.tgz | tar xz -C $sbt_home --strip-components=1 && \
     sbt sbtVersion
 
-WORKDIR /app
+ENV BUILDER_HOME=/home/builder
+RUN useradd -ms /bin/bash -d ${BUILDER_HOME} builder
 
-COPY ./ /app/
+WORKDIR ${BUILDER_HOME}/app
+COPY ./ ${BUILDER_HOME}/app/
+
+RUN chown -R builder: ${BUILDER_HOME}
+
+USER builder
+
 RUN sbt -mem 2048 assembly exit
 
 #
@@ -28,7 +35,7 @@ RUN mkdir -p /root/scripts
 WORKDIR /root
 
 # Copy assembled Fat JAR to working directory from building stage
-COPY --from=build-stage /app/target/scala-2.13/http4sUserService.jar /root
+COPY --from=build-stage /home/builder/app/target/scala-2.13/http4sUserService.jar /root
 
 # Copy the run scripts and target folder
 COPY scripts/* /root/scripts/
