@@ -6,19 +6,13 @@ import io.circe.generic.auto._
 import io.circe.generic.extras.semiauto._
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
+import org.http4s.EntityDecoder
 import org.http4s.circe._
-import org.http4s.implicits._
-import org.http4s.{EntityDecoder, Uri}
 
 import scala.util.control.NoStackTrace
 
 
 package object userservice {
-
-  /**
-   * Fixed values
-   */
-  val reqResBaseUrl: Uri = uri"https://reqres.in" / "api" / "users"
 
   /**
    * ADTs

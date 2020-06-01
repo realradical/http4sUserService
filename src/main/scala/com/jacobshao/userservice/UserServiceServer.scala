@@ -6,17 +6,18 @@ import com.jacobshao.userservice.cli.ArgParser
 import com.jacobshao.userservice.cli.ArgParser.CliArgs
 import com.jacobshao.userservice.config.Config
 import com.jacobshao.userservice.database.Database
-import com.jacobshao.userservice.metrics.ServerMetrics
 import com.jacobshao.userservice.repo.UserRepo
 import com.typesafe.scalalogging.StrictLogging
 import fs2.Stream
 import monix.eval.{Task, TaskApp}
+import nl.grons.metrics4.scala.DefaultInstrumented
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.implicits._
+import org.http4s.metrics.dropwizard.Dropwizard
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware._
 
-object UserServiceServer extends TaskApp with StrictLogging {
+object UserServiceServer extends TaskApp with StrictLogging with DefaultInstrumented {
 
   def run(args: List[String]): Task[ExitCode] =
     for {
@@ -41,9 +42,9 @@ object UserServiceServer extends TaskApp with StrictLogging {
         Stream.resource(Database.transactor(cliArgs, dbConfig)),
         Stream.resource(BlazeClientBuilder(scheduler).resource)
         ).mapN((_, _))
-      userAlg = UserService.impl(UserRepo(tractor), client, serverConfig.reqresBaseUri)
-      authRoute = Logger.httpRoutes(logHeaders = true, logBody = true)(UserServiceRoute(userAlg))
-      httpApp = Metrics(ServerMetrics)(authRoute).orNotFound
+      implicit0(userService: UserService) = new UserServiceIO(UserRepo(tractor), client, serverConfig.reqresBaseUri)
+      authRoute = Logger.httpRoutes(logHeaders = true, logBody = true)(UserServiceRoute(UserService.apply))
+      httpApp = Metrics(Dropwizard(metricRegistry, "server"))(authRoute).orNotFound
       exitCode <- BlazeServerBuilder[Task]
         .withBanner(Seq("http4s Server starts ****************************"))
         .bindHttp(serverConfig.port, serverConfig.host)

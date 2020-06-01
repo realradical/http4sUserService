@@ -3,6 +3,7 @@ package com.jacobshao.userservice
 import java.util.concurrent.Executors
 
 import cats.effect.{Blocker, ExitCode}
+import com.codahale.metrics.MetricFilter
 import com.jacobshao.userservice.database.UserQuery
 import com.opentable.db.postgres.embedded.EmbeddedPostgres
 import doobie.implicits._
@@ -17,14 +18,18 @@ import org.http4s.implicits._
 import org.http4s.{Method, Request, Status}
 import org.scalatest.featurespec.AnyFeatureSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, GivenWhenThen}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, GivenWhenThen, OptionValues}
 
-class UserServiceServerIntegrationSpec extends AnyFeatureSpec
-  with GivenWhenThen
-  with BeforeAndAfterAll
-  with BeforeAndAfterEach
-  with TestFixture
-  with Matchers {
+import scala.jdk.CollectionConverters._
+
+class UserServiceServerIntegrationSpec
+  extends AnyFeatureSpec
+    with GivenWhenThen
+    with BeforeAndAfterAll
+    with BeforeAndAfterEach
+    with TestFixture
+    with OptionValues
+    with Matchers {
 
   private var postgres: EmbeddedPostgres = _
   private var jdbcUrl: String = _
@@ -50,8 +55,7 @@ class UserServiceServerIntegrationSpec extends AnyFeatureSpec
       Blocker.liftExecutionContext(ExecutionContexts.synchronous)
     )
 
-    sql"CREATE TABLE users (user_id int NOT NULL, email VARCHAR PRIMARY KEY, first_name VARCHAR, last_name VARCHAR)"
-      .update.run
+    sql"CREATE TABLE users (user_id int NOT NULL, email VARCHAR PRIMARY KEY, first_name VARCHAR, last_name VARCHAR)".update.run
       .transact(transactor)
       .runSyncUnsafe()
 
@@ -65,8 +69,9 @@ class UserServiceServerIntegrationSpec extends AnyFeatureSpec
   }
 
   override protected def beforeEach(): Unit = {
-    sql"DELETE FROM users"
-      .update.run
+    UserServiceServer.metricRegistry.removeMatching(MetricFilter.ALL)
+
+    sql"DELETE FROM users".update.run
       .transact(transactor)
       .runSyncUnsafe()
   }
@@ -80,16 +85,22 @@ class UserServiceServerIntegrationSpec extends AnyFeatureSpec
         )
 
         When("A valid user creation POST request is received")
-        val request = Request[Task](Method.POST, uri"http://localhost:8080/users").withEntity(someValidUserCreationBody)
+        val request = Request[Task](Method.POST, uri"http://localhost:8080/users")
+          .withEntity(someValidUserCreationBody)
         val responseStatus = httpClient.status(request).runSyncUnsafe()
 
         Then("User is created in our database")
         server.getRequestCount shouldBe 1
         responseStatus shouldBe Status.NoContent
 
-        val actualUser = UserQuery.select(someValidUserEmail).unique.transact(transactor).runSyncUnsafe()
+        val actualUser =
+          UserQuery.select(someValidUserEmail).unique.transact(transactor).runSyncUnsafe()
 
         actualUser shouldBe someUser
+
+        withClue("Total POST request count recorded in the metrics registry") {
+          getTimer("server.default.post-requests").getCount shouldBe 1
+        }
       }
     }
 
@@ -101,16 +112,28 @@ class UserServiceServerIntegrationSpec extends AnyFeatureSpec
         )
 
         Given("A valid user creation POST request is received")
-        val postRequest = Request[Task](Method.POST, uri"http://localhost:8080/users").withEntity(someValidUserCreationBody)
+        val postRequest = Request[Task](Method.POST, uri"http://localhost:8080/users")
+          .withEntity(someValidUserCreationBody)
         httpClient.status(postRequest).runSyncUnsafe()
         server.getRequestCount shouldBe 1
 
         When("A valid user GET request is received")
-        val getRequest = Request[Task](Method.GET, uri"http://localhost:8080/users" / s"${someValidUserEmail.value}")
+        val getRequest = Request[Task](
+          Method.GET,
+          uri"http://localhost:8080/users" / s"${someValidUserEmail.value}"
+        )
         val actualUser = httpClient.expect[User](getRequest).runSyncUnsafe()
 
         Then("User data is retrieved")
         actualUser shouldBe someUser
+
+        withClue("Total POST request count recorded in the metrics registry") {
+          getTimer("server.default.post-requests").getCount shouldBe 1
+        }
+
+        withClue("Total GET request count recorded in the metrics registry") {
+          getTimer("server.default.get-requests").getCount shouldBe 1
+        }
       }
     }
 
@@ -122,18 +145,30 @@ class UserServiceServerIntegrationSpec extends AnyFeatureSpec
         )
 
         Given("A valid user creation POST request is received")
-        val postRequest = Request[Task](Method.POST, uri"http://localhost:8080/users").withEntity(someValidUserCreationBody)
+        val postRequest = Request[Task](Method.POST, uri"http://localhost:8080/users")
+          .withEntity(someValidUserCreationBody)
         httpClient.status(postRequest).runSyncUnsafe()
         server.getRequestCount shouldBe 1
 
         When("A valid user DELETE request is received")
-        val deleteRequest = Request[Task](Method.DELETE, uri"http://localhost:8080/users" / s"${someValidUserEmail.value}")
+        val deleteRequest = Request[Task](
+          Method.DELETE,
+          uri"http://localhost:8080/users" / s"${someValidUserEmail.value}"
+        )
         val responseStatus = httpClient.status(deleteRequest).runSyncUnsafe()
 
         responseStatus shouldBe Status.NoContent
 
         assertThrows[invariant.UnexpectedEnd.type] {
           UserQuery.select(someValidUserEmail).unique.transact(transactor).runSyncUnsafe()
+        }
+
+        withClue("Total POST request count recorded in the metrics registry") {
+          getTimer("server.default.post-requests").getCount shouldBe 1
+        }
+
+        withClue("Total GET request count recorded in the metrics registry") {
+          getTimer("server.default.delete-requests").getCount shouldBe 1
         }
       }
     }
@@ -149,11 +184,23 @@ class UserServiceServerIntegrationSpec extends AnyFeatureSpec
     }
   }
 
+  private def getTimer(meterName: String) = {
+    val (_, consumedTimer) = UserServiceServer.metricRegistry
+      .getTimers(MetricFilter.contains(meterName))
+      .asScala
+      .headOption
+      .value
+    consumedTimer
+  }
+
   private def startUserServiceServer(dbUrl: String): Task[ExitCode] = UserServiceServer.run(
     List(
-      "--dbUrl", jdbcUrl,
-      "--dbUser", "postgres",
-      "--dbPassword", "postgres"
+      "--dbUrl",
+      jdbcUrl,
+      "--dbUser",
+      "postgres",
+      "--dbPassword",
+      "postgres"
     )
   )
 }
