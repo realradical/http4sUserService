@@ -41,7 +41,7 @@ object UserServiceServer extends TaskApp with StrictLogging {
         Stream.resource(Database.transactor(cliArgs, dbConfig)),
         Stream.resource(BlazeClientBuilder(scheduler).resource)
         ).mapN((_, _))
-      userAlg = UserService.impl(UserRepo(tractor), client)
+      userAlg = UserService.impl(UserRepo(tractor), client, serverConfig.reqresBaseUri)
       authRoute = Logger.httpRoutes(logHeaders = true, logBody = true)(UserServiceRoute(userAlg))
       httpApp = Metrics(ServerMetrics)(authRoute).orNotFound
       exitCode <- BlazeServerBuilder[Task]

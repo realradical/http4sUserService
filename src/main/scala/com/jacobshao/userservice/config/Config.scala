@@ -3,11 +3,14 @@ package com.jacobshao.userservice.config
 import io.circe.config.parser
 import io.circe.generic.auto._
 import monix.eval.Task
+import org.http4s.Uri
+import org.http4s.circe._
 
 case class ServerConfig(
-    port: Int,
-    host: String,
-)
+                           port: Int,
+                           host: String,
+                           reqresBaseUri: Uri
+                       )
 
 case class DbConfig(url: String, username: String, password: String, poolSize: Int)
 

@@ -9,6 +9,8 @@ val CirceConfigVersion = "0.8.0"
 val Metrics4Scala = "4.1.5"
 val Scopt = "4.0.0-RC2"
 val Mockito = "1.14.3"
+val EmbeddedPG = "0.13.3"
+val MockServer = "4.3.1"
 
 lazy val root = (project in file("."))
   .settings(
@@ -33,7 +35,9 @@ lazy val root = (project in file("."))
       "ch.qos.logback" % "logback-classic" % LogbackVersion,
       "nl.grons" %% "metrics4-scala" % Metrics4Scala,
       "org.scalatest" %% "scalatest" % ScalaTestVersion % Test,
-      "org.mockito" %% "mockito-scala" % Mockito % Test
+      "org.mockito" %% "mockito-scala" % Mockito % Test,
+      "com.opentable.components" % "otj-pg-embedded" % EmbeddedPG % Test,
+      "com.squareup.okhttp3" % "mockwebserver" % MockServer % Test,
     ),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0")
   )

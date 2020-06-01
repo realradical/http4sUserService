@@ -5,9 +5,11 @@ import cats.implicits._
 import com.jacobshao.userservice.repo.UserRepo
 import monix.eval.Task
 import org.http4s.client.Client
-import org.http4s.{Method, Request}
+import org.http4s.{Method, Request, Uri}
 
 trait UserService {
+  def reqResBaseUri: Uri
+
   def create(userCreationRequest: UserCreationRequest): Task[Unit]
 
   def get(email: EmailAddress): Task[User]
@@ -18,7 +20,9 @@ trait UserService {
 object UserService {
   def apply(implicit ev: UserService): UserService = ev
 
-  def impl(userRepo: UserRepo, client: Client[Task]): UserService = new UserService {
+  def impl(userRepo: UserRepo, client: Client[Task], baseUri: Uri): UserService = new UserService {
+
+    override val reqResBaseUri: Uri = baseUri
 
     override def create(userReq: UserCreationRequest): Task[Unit] =
       for {
@@ -28,7 +32,7 @@ object UserService {
           case Invalid(nec) =>
             Task.raiseError(UserCreationRequestInvalidFailure(nec.foldLeft("")((b, dv) => b + "-" + dv.errorMessage)))
         }
-        request = Request[Task](Method.GET, reqResBaseUrl / s"${userReq.user_id.value}")
+        request = Request[Task](Method.GET, reqResBaseUri / s"${userReq.user_id.value}")
         userData <- client.expectOption[ReqResUserResponse](request)
           .flatMap {
             case Some(user) => Task.now(user)
