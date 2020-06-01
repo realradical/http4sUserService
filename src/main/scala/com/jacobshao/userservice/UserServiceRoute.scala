@@ -18,7 +18,7 @@ object UserServiceRoute extends StrictLogging {
 
   import dsl._
 
-  def apply(userService: UserService): HttpRoutes[Task] =
+  def apply(implicit userService: UserService): HttpRoutes[Task] =
     HttpRoutes.of[Task] {
       case req@POST -> Root / "users" =>
         (for {

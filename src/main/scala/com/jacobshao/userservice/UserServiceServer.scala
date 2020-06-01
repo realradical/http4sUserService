@@ -43,7 +43,7 @@ object UserServiceServer extends TaskApp with StrictLogging with DefaultInstrume
         Stream.resource(BlazeClientBuilder(scheduler).resource)
         ).mapN((_, _))
       implicit0(userService: UserService) = new UserServiceIO(UserRepo(tractor), client, serverConfig.reqresBaseUri)
-      authRoute = Logger.httpRoutes(logHeaders = true, logBody = true)(UserServiceRoute(UserService.apply))
+      authRoute = Logger.httpRoutes(logHeaders = true, logBody = true)(UserServiceRoute.apply)
       httpApp = Metrics(Dropwizard(metricRegistry, "server"))(authRoute).orNotFound
       exitCode <- BlazeServerBuilder[Task]
         .withBanner(Seq("http4s Server starts ****************************"))
