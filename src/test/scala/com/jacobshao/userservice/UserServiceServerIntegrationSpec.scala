@@ -98,8 +98,52 @@ class UserServiceServerIntegrationSpec
 
         actualUser shouldBe someUser
 
-        withClue("Total POST request count recorded in the metrics registry") {
+        withClue("Total server POST request count recorded in the metrics registry") {
           getTimer("server.default.post-requests").getCount shouldBe 1
+        }
+
+        withClue("Total client GET request count recorded in the metrics registry") {
+          getTimer("client.default.get-requests").getCount shouldBe 1
+        }
+      }
+    }
+
+    Scenario("should retry to get user data from ReqRes endpoint") {
+      withMockServer { server =>
+        Given("ReqRes endpoint is offline for the first two requests and back online after")
+        server.enqueue(
+          new MockResponse().setResponseCode(500)
+        )
+        server.enqueue(
+          new MockResponse().setResponseCode(500)
+        )
+        server.enqueue(
+          new MockResponse().setBody(someValidReqResResponse).setResponseCode(200)
+        )
+
+        When("A valid user creation POST request is received")
+        val request = Request[Task](Method.POST, uri"http://localhost:8080/users")
+          .withEntity(someValidUserCreationBody)
+        val responseStatus = httpClient.status(request).runSyncUnsafe()
+
+        Then("User is created in our database")
+        responseStatus shouldBe Status.NoContent
+
+        withClue("Retried 2 times") {
+          server.getRequestCount shouldBe 3
+        }
+
+        val actualUser =
+          UserQuery.select(someValidUserEmail).unique.transact(transactor).runSyncUnsafe()
+
+        actualUser shouldBe someUser
+
+        withClue("Total server POST request count recorded in the metrics registry") {
+          getTimer("server.default.post-requests").getCount shouldBe 1
+        }
+
+        withClue("Total client GET request count recorded in the metrics registry") {
+          getTimer("client.default.get-requests").getCount shouldBe 1
         }
       }
     }
@@ -127,12 +171,16 @@ class UserServiceServerIntegrationSpec
         Then("User data is retrieved")
         actualUser shouldBe someUser
 
-        withClue("Total POST request count recorded in the metrics registry") {
+        withClue("Total server POST request count recorded in the metrics registry") {
           getTimer("server.default.post-requests").getCount shouldBe 1
         }
 
-        withClue("Total GET request count recorded in the metrics registry") {
+        withClue("Total server GET request count recorded in the metrics registry") {
           getTimer("server.default.get-requests").getCount shouldBe 1
+        }
+
+        withClue("Total client GET request count recorded in the metrics registry") {
+          getTimer("client.default.get-requests").getCount shouldBe 1
         }
       }
     }
@@ -163,12 +211,16 @@ class UserServiceServerIntegrationSpec
           UserQuery.select(someValidUserEmail).unique.transact(transactor).runSyncUnsafe()
         }
 
-        withClue("Total POST request count recorded in the metrics registry") {
+        withClue("Total server POST request count recorded in the metrics registry") {
           getTimer("server.default.post-requests").getCount shouldBe 1
         }
 
-        withClue("Total GET request count recorded in the metrics registry") {
+        withClue("Total server GET request count recorded in the metrics registry") {
           getTimer("server.default.delete-requests").getCount shouldBe 1
+        }
+
+        withClue("Total client GET request count recorded in the metrics registry") {
+          getTimer("client.default.get-requests").getCount shouldBe 1
         }
       }
     }
