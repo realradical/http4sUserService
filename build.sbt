@@ -38,7 +38,7 @@ lazy val root = (project in file("."))
       "org.scalatest" %% "scalatest" % ScalaTestVersion % Test,
       "org.mockito" %% "mockito-scala" % Mockito % Test,
       "com.opentable.components" % "otj-pg-embedded" % EmbeddedPG % Test,
-      "com.squareup.okhttp3" % "mockwebserver" % MockServer % Test,
+      "com.squareup.okhttp3" % "mockwebserver" % MockServer % Test
     ),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0")
   )

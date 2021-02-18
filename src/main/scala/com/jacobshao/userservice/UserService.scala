@@ -30,18 +30,23 @@ class UserServiceIO(userRepo: UserRepo, client: Client[Task], baseUri: Uri) exte
         .validateRequest(userReq) match {
         case Valid(email) => Task.now(email)
         case Invalid(nec) =>
-          Task.raiseError(UserCreationRequestInvalidFailure(nec.foldLeft("")((b, dv) => b + "-" + dv.errorMessage)))
+          Task.raiseError(
+            UserCreationRequestInvalidFailure(
+              nec.foldLeft("")((b, dv) => b + "-" + dv.errorMessage)
+            )
+          )
       }
       request = Request[Task](Method.GET, reqResBaseUri / s"${userReq.user_id.value}")
-      userData <- client.expectOption[ReqResUserResponse](request)
+      userData <- client
+        .expectOption[ReqResUserResponse](request)
         .flatMap {
           case Some(user) => Task.now(user)
-          case None => Task.raiseError(UserDataNotAvailableFailure)
+          case None       => Task.raiseError(UserDataNotAvailableFailure)
         }
       user = User(userReq.user_id, validEmail, userData.data.first_name, userData.data.last_name)
       _ <- userRepo.createUser(user).flatMap {
         case Right(_) => Task.unit
-        case Left(e) => Task.raiseError(e)
+        case Left(e)  => Task.raiseError(e)
       }
     } yield ()
 
@@ -50,11 +55,11 @@ class UserServiceIO(userRepo: UserRepo, client: Client[Task], baseUri: Uri) exte
       validEmail <- CreateRequestValidatorNec
         .validateEmail(email) match {
         case Valid(email) => Task.now(email)
-        case Invalid(_) => Task.raiseError(InvalidEmailFormatFailure)
+        case Invalid(_)   => Task.raiseError(InvalidEmailFormatFailure)
       }
       user <- userRepo.getUser(validEmail).flatMap {
         case Right(user) => Task(user)
-        case Left(e) => Task.raiseError(e)
+        case Left(e)     => Task.raiseError(e)
       }
     } yield user
 
@@ -63,7 +68,7 @@ class UserServiceIO(userRepo: UserRepo, client: Client[Task], baseUri: Uri) exte
       validEmail <- CreateRequestValidatorNec
         .validateEmail(email) match {
         case Valid(email) => Task.now(email)
-        case Invalid(_) => Task.raiseError(InvalidEmailFormatFailure)
+        case Invalid(_)   => Task.raiseError(InvalidEmailFormatFailure)
       }
       _ <- userRepo.deleteUser(validEmail)
     } yield ()

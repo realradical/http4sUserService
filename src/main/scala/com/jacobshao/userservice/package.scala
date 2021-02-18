@@ -11,12 +11,10 @@ import org.http4s.circe._
 
 import scala.util.control.NoStackTrace
 
-
 package object userservice {
 
-  /**
-   * ADTs
-   */
+  /** ADTs
+    */
   case class EmailAddress(value: String) extends AnyVal
 
   implicit val emailAddressDecoder: Decoder[EmailAddress] = deriveUnwrappedDecoder
@@ -50,14 +48,15 @@ package object userservice {
   case class UserData(first_name: FirstName, last_name: LastName)
 
   case class ReqResUserResponse(data: UserData)
-  implicit val reqResUserJsonDecoder: EntityDecoder[Task, ReqResUserResponse] = jsonOf[Task, ReqResUserResponse]
+  implicit val reqResUserJsonDecoder: EntityDecoder[Task, ReqResUserResponse] =
+    jsonOf[Task, ReqResUserResponse]
 
   case class ResponseError(message: String)
-  implicit val responseErrorJsonDecoder: EntityDecoder[Task, ResponseError] = jsonOf[Task, ResponseError]
+  implicit val responseErrorJsonDecoder: EntityDecoder[Task, ResponseError] =
+    jsonOf[Task, ResponseError]
 
-  /**
-   * Exceptions
-   */
+  /** Exceptions
+    */
 
   sealed trait UserServiceError extends NoStackTrace {
 
@@ -85,11 +84,11 @@ package object userservice {
     override def message: String = errorMessage
   }
 
-  /**
-   * Form Validation
-   */
+  /** Form Validation
+    */
 
-  private val emailRegex = "(?:[a-z0-9!#$%&'*+\\/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+\\/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])"
+  private val emailRegex =
+    "(?:[a-z0-9!#$%&'*+\\/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+\\/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])"
 
   sealed trait DomainValidation {
     def errorMessage: String
@@ -108,7 +107,9 @@ package object userservice {
         email.validNec
       else EmailInvalid.invalidNec
 
-    def validateRequest(req: UserCreationRequest): ValidationResult[EmailAddress] = validateEmail(req.email)
+    def validateRequest(req: UserCreationRequest): ValidationResult[EmailAddress] = validateEmail(
+      req.email
+    )
   }
 
   object CreateRequestValidatorNec extends CreateRequestValidatorNec

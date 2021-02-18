@@ -7,10 +7,10 @@ import org.http4s.Uri
 import org.http4s.circe._
 
 case class ServerConfig(
-                           port: Int,
-                           host: String,
-                           reqresBaseUri: Uri
-                       )
+    port: Int,
+    host: String,
+    reqresBaseUri: Uri
+)
 
 case class DbConfig(url: String, username: String, password: String, poolSize: Int)
 

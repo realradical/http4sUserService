@@ -8,7 +8,7 @@ import com.jacobshao.userservice.database.UserQuery
 import com.opentable.db.postgres.embedded.EmbeddedPostgres
 import doobie.implicits._
 import doobie.util.transactor.Transactor
-import doobie.util.{ExecutionContexts, invariant}
+import doobie.util.{invariant, ExecutionContexts}
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global
@@ -23,7 +23,7 @@ import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, GivenWhenThen, Opti
 import scala.jdk.CollectionConverters._
 
 class UserServiceServerIntegrationSpec
-  extends AnyFeatureSpec
+    extends AnyFeatureSpec
     with GivenWhenThen
     with BeforeAndAfterAll
     with BeforeAndAfterEach

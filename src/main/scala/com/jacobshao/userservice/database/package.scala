@@ -10,6 +10,11 @@ package object database {
 
   case class DbMaxPoolSize(value: Int) extends AnyVal
 
-  case class ConnectionParams(jdbcUrl: DbJdbcUrl, userName: DbUsername, password: DbPassword, maxPoolSize: DbMaxPoolSize)
+  case class ConnectionParams(
+      jdbcUrl: DbJdbcUrl,
+      userName: DbUsername,
+      password: DbPassword,
+      maxPoolSize: DbMaxPoolSize
+  )
 
 }

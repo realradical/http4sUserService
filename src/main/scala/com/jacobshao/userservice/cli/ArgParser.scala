@@ -35,11 +35,11 @@ object ArgParser {
     )
   }
 
-  def parse[F[_] : Sync](args: List[String]): F[CliArgs] =
+  def parse[F[_]: Sync](args: List[String]): F[CliArgs] =
     Sync[F].defer(
       OParser.parse(parser, args, zero) match {
         case Some(cliArgs) => Sync[F].pure(cliArgs)
-        case _ => Sync[F].raiseError(new IllegalArgumentException("Illegal arguments"))
+        case _             => Sync[F].raiseError(new IllegalArgumentException("Illegal arguments"))
       }
     )
 }
