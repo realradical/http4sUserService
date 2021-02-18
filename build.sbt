@@ -10,7 +10,7 @@ val Metrics4Scala = "4.1.5"
 val Scopt = "4.0.0-RC2"
 val Mockito = "1.14.3"
 val EmbeddedPG = "0.13.3"
-val MockServer = "4.3.1"
+val MockServer = "4.9.1"
 
 lazy val root = (project in file("."))
   .settings(
