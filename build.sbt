@@ -40,7 +40,7 @@ lazy val root = (project in file("."))
       "com.opentable.components" % "otj-pg-embedded" % EmbeddedPG % Test,
       "com.squareup.okhttp3" % "mockwebserver" % MockServer % Test,
     ),
-    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0")
+    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
 
 scalacOptions ++= Seq(
