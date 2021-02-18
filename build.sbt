@@ -8,7 +8,7 @@ val SLoggingVersion = "3.9.2"
 val CirceConfigVersion = "0.8.0"
 val Metrics4Scala = "4.1.5"
 val Scopt = "4.0.0-RC2"
-val Mockito = "1.14.3"
+val Mockito = "1.14.8"
 val EmbeddedPG = "0.13.3"
 val MockServer = "4.3.1"
 
