@@ -19,8 +19,7 @@ object UserQuery {
          |  ${user.firstName},
          |  ${user.lastName}
          |)
-        """.stripMargin
-      .update
+        """.stripMargin.update
   }
 
   def select(email: EmailAddress): doobie.Query0[User] = {
@@ -41,7 +40,6 @@ object UserQuery {
          |DELETE
          |FROM users
          |WHERE email = $email
-        """.stripMargin
-      .update
+        """.stripMargin.update
   }
 }

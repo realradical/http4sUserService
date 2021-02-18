@@ -12,7 +12,12 @@ import fs2.Stream
 import monix.eval.{Task, TaskApp}
 import nl.grons.metrics4.scala.DefaultInstrumented
 import org.http4s.client.blaze.BlazeClientBuilder
-import org.http4s.client.middleware.{Retry, RetryPolicy, Logger => ClientLogger, Metrics => ClientMetrics}
+import org.http4s.client.middleware.{
+  Retry,
+  RetryPolicy,
+  Logger => ClientLogger,
+  Metrics => ClientMetrics
+}
 import org.http4s.implicits._
 import org.http4s.metrics.dropwizard.Dropwizard
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -25,12 +30,9 @@ object UserServiceServer extends TaskApp with StrictLogging with DefaultInstrume
   def run(args: List[String]): Task[ExitCode] =
     for {
       cliArgs <- ArgParser.parse(args)
-      _ <- Task(logger.info(
-        s"""description="running with CLI args: ${
-          cliArgs.copy(
-            dbPassword = cliArgs.dbPassword.map(pw => s"***${pw.takeRight(4)})")
-          )
-        }" """))
+      _ <- Task(logger.info(s"""description="running with CLI args: ${cliArgs.copy(
+        dbPassword = cliArgs.dbPassword.map(pw => s"***${pw.takeRight(4)})")
+      )}" """))
       exitCode <- serverStream(cliArgs).compile.drain
         .as(ExitCode.Success)
         .onErrorHandleWith { t =>
@@ -53,7 +55,7 @@ object UserServiceServer extends TaskApp with StrictLogging with DefaultInstrume
               )
             )
         )
-        ).mapN((_, _))
+      ).mapN((_, _))
       implicit0(userService: UserService) = new UserServiceIO(
         UserRepo(tractor),
         client,
